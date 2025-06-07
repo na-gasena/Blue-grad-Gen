@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+    <title>Blue Gradient Generator</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
@@ -13,6 +13,90 @@
   </head>
 
   <body>
+    <div id="main-container">
+      <div id="canvas-container"></div>
+      <div id="controls-panel">
+        <h3>パラメータ設定</h3>
+        
+        <div class="control-group">
+          <label>図形:</label>
+          <select id="shapeSelect">
+            <option value="circle">円</option>
+            <option value="triangle">三角</option>
+            <option value="rectangle">四角</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>カラーパレット:</label>
+          <select id="colorPalette">
+            <option value="blue-white">青・白</option>
+            <option value="red-white">赤・白</option>
+            <option value="green-white">緑・白</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>図形サイズ: <span id="sizeValue">150</span></label>
+          <input type="range" id="shapeSize" min="50" max="300" value="150">
+        </div>
+
+        <div class="control-group">
+          <label>X位置: <span id="xPosValue">0</span></label>
+          <input type="range" id="xPosition" min="-200" max="200" value="0">
+        </div>
+
+        <div class="control-group">
+          <label>Y位置: <span id="yPosValue">0</span></label>
+          <input type="range" id="yPosition" min="-200" max="200" value="0">
+        </div>
+
+        <div class="control-group">
+          <label>グラデーション開始: <span id="gradStartValue">0.0</span></label>
+          <input type="range" id="gradientStart" min="0" max="1" step="0.1" value="0">
+        </div>
+
+        <div class="control-group">
+          <label>グラデーション終了: <span id="gradEndValue">1.0</span></label>
+          <input type="range" id="gradientEnd" min="0" max="1" step="0.1" value="1">
+        </div>
+
+        <div class="control-group">
+          <label>
+            <input type="checkbox" id="gradientLoop"> グラデーションループ
+          </label>
+        </div>
+
+        <div class="control-group">
+          <label>プレビュー背景:</label>
+          <select id="previewBg">
+            <option value="transparent">透過</option>
+            <option value="white">白</option>
+            <option value="black">黒</option>
+            <option value="gray">グレー</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>出力幅: <span id="outputWidthValue">2520</span></label>
+          <input type="number" id="outputWidth" min="100" max="5000" value="2520">
+        </div>
+
+        <div class="control-group">
+          <label>出力高さ: <span id="outputHeightValue">2992</span></label>
+          <input type="number" id="outputHeight" min="100" max="5000" value="2992">
+        </div>
+
+        <div class="control-group">
+          <label>
+            <input type="checkbox" id="transparentBg" checked> 背景透過で保存
+          </label>
+        </div>
+
+        <button id="saveButton">PNG保存</button>
+      </div>
+    </div>
+    
     <script src="sketch.js"></script>
   </body>
 </html>
