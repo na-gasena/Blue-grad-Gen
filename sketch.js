@@ -36,6 +36,9 @@ function setup() {
   canvas = createCanvas(canvasWidth, canvasHeight);
   canvas.parent('canvas-container');
   
+  // 滑らかな描画のための設定
+  pixelDensity(2); // 高DPI対応
+  
   // UIイベントリスナーの設定
   setupUI();
   
@@ -166,8 +169,8 @@ function calculateGradientProgress(progress) {
   return gradProgress;
 }
 
-// カラー補間のヘルパー関数
-function interpolateColor(palette, gradProgress) {
+// カラー補間のヘルパー関数（改良されたディザリング付き）
+function interpolateColor(palette, gradProgress, x = 0, y = 0) {
   // NaN や無効な値をチェック
   if (!isFinite(gradProgress)) {
     gradProgress = 0.5;
@@ -185,11 +188,32 @@ function interpolateColor(palette, gradProgress) {
     endColor = palette.start;
   }
   
-  let r = lerp(startColor[0], endColor[0], gradProgress);
-  let g = lerp(startColor[1], endColor[1], gradProgress);
-  let b = lerp(startColor[2], endColor[2], gradProgress);
+  // 基本色の計算
+  let baseR = lerp(startColor[0], endColor[0], gradProgress);
+  let baseG = lerp(startColor[1], endColor[1], gradProgress);
+  let baseB = lerp(startColor[2], endColor[2], gradProgress);
   
-  // 色値も0-255の範囲でクランプ
+  // 改良されたディザリング処理
+  let ditherStrength = 2.0; // ディザリング強度を増加
+  
+  // 座標の正規化（解像度に依存しないディザリングパターンのため）
+  let normalizedX = x * 0.001;
+  let normalizedY = y * 0.001;
+  
+  // 複数のノイズレイヤーを組み合わせ
+  let noise1 = noise(normalizedX * 50, normalizedY * 50) - 0.5;
+  let noise2 = noise(normalizedX * 20, normalizedY * 20) - 0.5;
+  let noise3 = noise(normalizedX * 80, normalizedY * 80) - 0.5;
+  
+  // ノイズを重み付けして組み合わせ
+  let combinedNoise = (noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1) * ditherStrength;
+  
+  // 各色チャンネルに異なるオフセットを適用してより自然なディザリングを実現
+  let r = baseR + combinedNoise + (noise(normalizedX * 100, normalizedY * 100, 0.1) - 0.5) * ditherStrength * 0.5;
+  let g = baseG + combinedNoise + (noise(normalizedX * 100, normalizedY * 100, 0.2) - 0.5) * ditherStrength * 0.5;
+  let b = baseB + combinedNoise + (noise(normalizedX * 100, normalizedY * 100, 0.3) - 0.5) * ditherStrength * 0.5;
+  
+  // 色値を0-255の範囲でクランプ
   r = Math.max(0, Math.min(255, r));
   g = Math.max(0, Math.min(255, g));
   b = Math.max(0, Math.min(255, b));
@@ -198,70 +222,88 @@ function interpolateColor(palette, gradProgress) {
 }
 
 function drawGradientCircle(x, y, size) {
-  let steps = 100;
+  let steps = Math.max(2000, size * 8); // ステップ数を大幅に増加
   let currentPalette = colorPalettes[params.colorPalette];
+  
+  push();
+  blendMode(NORMAL); // 正常なブレンドモード
   
   for (let i = 0; i < steps; i++) {
     let progress = i / (steps - 1);
     let gradProgress = calculateGradientProgress(progress);
     
-    // 色の補間
-    let color = interpolateColor(currentPalette, gradProgress);
-    fill(color.r, color.g, color.b);
-    
     // 円の描画（上から下へのグラデーション）
-    let yStart = y - size/2 + (progress * size);
-    let yEnd = y - size/2 + ((progress + 1/steps) * size);
+    let yPos = y - size/2 + (progress * size);
+    let stripHeight = Math.max(0.5, size / steps); // 最小高さを0.5pxに設定
     
-    // 各段階で円の幅を計算
-    for (let py = yStart; py < yEnd; py += 1) {
-      let distFromCenter = abs(py - y);
-      if (distFromCenter < size/2) {
-        let circleWidth = 2 * sqrt((size/2) * (size/2) - distFromCenter * distFromCenter);
-        rect(x - circleWidth/2, py, circleWidth, 1);
-      }
+    // 各Y位置での円の幅を計算
+    let distFromCenter = abs(yPos - y);
+    if (distFromCenter < size/2) {
+      let circleWidth = 2 * sqrt((size/2) * (size/2) - distFromCenter * distFromCenter);
+      
+      // 色の補間（座標を渡してディザリング）
+      let color = interpolateColor(currentPalette, gradProgress, x, yPos);
+      fill(color.r, color.g, color.b);
+      
+      // より細かい高さで描画してバンドを減らす
+      rect(x - circleWidth/2, yPos, circleWidth, stripHeight);
     }
   }
+  
+  pop();
 }
 
 function drawGradientTriangle(x, y, size) {
-  let steps = 100;
+  let steps = Math.max(2000, size * 8); // ステップ数を大幅に増加
   let currentPalette = colorPalettes[params.colorPalette];
+  
+  push();
+  blendMode(NORMAL);
   
   for (let i = 0; i < steps; i++) {
     let progress = i / (steps - 1);
     let gradProgress = calculateGradientProgress(progress);
-    
-    // 色の補間
-    let color = interpolateColor(currentPalette, gradProgress);
-    fill(color.r, color.g, color.b);
     
     // 三角形の描画（上から下へのグラデーション）
     let yPos = y - size/2 + (progress * size);
     let triangleWidth = (1 - progress) * size;
+    let stripHeight = Math.max(0.5, size / steps); // 最小高さを0.5pxに設定
     
     if (triangleWidth > 0) {
-      rect(x - triangleWidth/2, yPos, triangleWidth, size/steps);
+      // 色の補間（座標を渡してディザリング）
+      let color = interpolateColor(currentPalette, gradProgress, x, yPos);
+      fill(color.r, color.g, color.b);
+      
+      rect(x - triangleWidth/2, yPos, triangleWidth, stripHeight);
     }
   }
+  
+  pop();
 }
 
 function drawGradientRectangle(x, y, size) {
-  let steps = 100;
+  let steps = Math.max(2000, size * 8); // ステップ数を大幅に増加
   let currentPalette = colorPalettes[params.colorPalette];
+  
+  push();
+  blendMode(NORMAL);
   
   for (let i = 0; i < steps; i++) {
     let progress = i / (steps - 1);
     let gradProgress = calculateGradientProgress(progress);
     
-    // 色の補間
-    let color = interpolateColor(currentPalette, gradProgress);
-    fill(color.r, color.g, color.b);
-    
     // 四角形の描画（上から下へのグラデーション）
     let yPos = y - size/2 + (progress * size);
-    rect(x - size/2, yPos, size, size/steps);
+    let stripHeight = Math.max(0.5, size / steps); // 最小高さを0.5pxに設定
+    
+    // 色の補間（座標を渡してディザリング）
+    let color = interpolateColor(currentPalette, gradProgress, x, yPos);
+    fill(color.r, color.g, color.b);
+    
+    rect(x - size/2, yPos, size, stripHeight);
   }
+  
+  pop();
 }
 
 function setupUI() {
@@ -380,19 +422,46 @@ function saveHighResImage() {
   // 高解像度キャンバス作成
   let highResCanvas = createGraphics(params.outputWidth, params.outputHeight);
   
-  // 背景設定（保存用）
-  if (!params.transparentBg) {
-    highResCanvas.background(255); // 白背景
+  // ピクセル密度を1に設定して正確なサイズにする
+  highResCanvas.pixelDensity(1);
+  
+  if (params.transparentBg) {
+    // 透過背景の場合：マスクを使用した正確な透過処理
+    
+    // 1. まず白背景で図形を描画
+    highResCanvas.background(255);
+    // 座標スケーリングをより正確に計算
+    let scaleX = params.outputWidth / width;
+    let scaleY = params.outputHeight / height;
+    let centerX = params.outputWidth / 2 + (params.xPosition * scaleX);
+    let centerY = params.outputHeight / 2 + (params.yPosition * scaleY);
+    let scaledSize = params.shapeSize * scaleX;
+    drawHighResShape(highResCanvas, centerX, centerY, scaledSize);
+    
+    // 2. マスク用キャンバスを作成（図形の形状を白で描画）
+    let maskCanvas = createGraphics(params.outputWidth, params.outputHeight);
+    maskCanvas.pixelDensity(1);
+    maskCanvas.background(0); // 黒背景（透過部分）
+    maskCanvas.fill(255); // 白で図形を描画（不透明部分）
+    maskCanvas.noStroke();
+    
+    // マスク用の図形描画
+    drawShapeMask(maskCanvas, centerX, centerY, scaledSize);
+    
+    // 3. マスクを適用してピクセル単位で透過処理
+    applyTransparencyMask(highResCanvas, maskCanvas);
+    
   } else {
-    highResCanvas.clear(); // 透過背景
+    // 不透明背景の場合：従来通り
+    highResCanvas.background(255);
+    // 座標スケーリングをより正確に計算
+    let scaleX = params.outputWidth / width;
+    let scaleY = params.outputHeight / height;
+    let centerX = params.outputWidth / 2 + (params.xPosition * scaleX);
+    let centerY = params.outputHeight / 2 + (params.yPosition * scaleY);
+    let scaledSize = params.shapeSize * scaleX;
+    drawHighResShape(highResCanvas, centerX, centerY, scaledSize);
   }
-  
-  // 高解像度での図形描画
-  let centerX = params.outputWidth / 2 + (params.xPosition * params.outputWidth / width);
-  let centerY = params.outputHeight / 2 + (params.yPosition * params.outputHeight / height);
-  let scaledSize = params.shapeSize * (params.outputWidth / width);
-  
-  drawHighResShape(highResCanvas, centerX, centerY, scaledSize);
   
   // ファイル保存
   let timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
@@ -404,48 +473,101 @@ function drawHighResShape(graphics, x, y, size) {
   graphics.push();
   graphics.noStroke();
   
-  let steps = 200; // 高解像度用により細かいステップ
+  let steps = Math.max(4000, size * 12); // 高解像度用により細かいステップ（大幅増加）
   let currentPalette = colorPalettes[params.colorPalette];
   
   for (let i = 0; i < steps; i++) {
     let progress = i / (steps - 1);
     let gradProgress = calculateGradientProgress(progress);
     
-    // 色の補間
-    let color = interpolateColor(currentPalette, gradProgress);
-    graphics.fill(color.r, color.g, color.b);
-    
     switch(params.shape) {
       case 'circle':
         // 円の高解像度描画
-        let yStart = y - size/2 + (progress * size);
-        let yEnd = y - size/2 + ((progress + 1/steps) * size);
+        let circleYPos = y - size/2 + (progress * size);
+        let circleStripHeight = Math.max(0.5, size / steps); // プレビューと同じ最小高さ設定
         
-        for (let py = yStart; py < yEnd; py += 1) {
-          let distFromCenter = abs(py - y);
-          if (distFromCenter < size/2) {
-            let circleWidth = 2 * sqrt((size/2) * (size/2) - distFromCenter * distFromCenter);
-            graphics.rect(x - circleWidth/2, py, circleWidth, 1);
-          }
+        let distFromCenter = abs(circleYPos - y);
+        if (distFromCenter < size/2) {
+          let circleWidth = 2 * sqrt((size/2) * (size/2) - distFromCenter * distFromCenter);
+          
+          // 色の補間（座標を渡してディザリング）
+          let circleColor = interpolateColor(currentPalette, gradProgress, x, circleYPos);
+          graphics.fill(circleColor.r, circleColor.g, circleColor.b);
+          
+          graphics.rect(x - circleWidth/2, circleYPos, circleWidth, circleStripHeight);
         }
         break;
         
       case 'triangle':
-        let yPos = y - size/2 + (progress * size);
+        let triangleYPos = y - size/2 + (progress * size);
         let triangleWidth = (1 - progress) * size;
+        let triangleStripHeight = Math.max(0.5, size / steps); // プレビューと同じ最小高さ設定
         if (triangleWidth > 0) {
-          graphics.rect(x - triangleWidth/2, yPos, triangleWidth, size/steps);
+          // 色の補間（座標を渡してディザリング）
+          let triangleColor = interpolateColor(currentPalette, gradProgress, x, triangleYPos);
+          graphics.fill(triangleColor.r, triangleColor.g, triangleColor.b);
+          
+          graphics.rect(x - triangleWidth/2, triangleYPos, triangleWidth, triangleStripHeight);
         }
         break;
         
       case 'rectangle':
         let rectYPos = y - size/2 + (progress * size);
-        graphics.rect(x - size/2, rectYPos, size, size/steps);
+        let rectStripHeight = Math.max(0.5, size / steps); // プレビューと同じ最小高さ設定
+        
+        // 色の補間（座標を渡してディザリング）
+        let rectColor = interpolateColor(currentPalette, gradProgress, x, rectYPos);
+        graphics.fill(rectColor.r, rectColor.g, rectColor.b);
+        
+        graphics.rect(x - size/2, rectYPos, size, rectStripHeight);
         break;
     }
   }
   
   graphics.pop();
+}
+
+// マスク用の図形描画（単色の白で図形の形状のみ）
+function drawShapeMask(graphics, x, y, size) {
+  graphics.push();
+  graphics.fill(255); // 白で描画（不透明部分）
+  graphics.noStroke();
+  
+  switch(params.shape) {
+    case 'circle':
+      graphics.circle(x, y, size);
+      break;
+    case 'triangle':
+      graphics.triangle(x, y - size/2, x - size/2, y + size/2, x + size/2, y + size/2);
+      break;
+    case 'rectangle':
+      graphics.rect(x - size/2, y - size/2, size, size);
+      break;
+  }
+  
+  graphics.pop();
+}
+
+// マスクを適用して透過処理を行う
+function applyTransparencyMask(targetCanvas, maskCanvas) {
+  targetCanvas.loadPixels();
+  maskCanvas.loadPixels();
+  
+  // ピクセル単位で処理
+  for (let i = 0; i < targetCanvas.pixels.length; i += 4) {
+    let maskAlpha = maskCanvas.pixels[i]; // マスクの赤チャンネル（グレースケール）
+    
+    // マスクが黒（0）の部分は透過、白（255）の部分は不透明
+    if (maskAlpha === 0) {
+      // 完全透過
+      targetCanvas.pixels[i + 3] = 0; // アルファチャンネルを0に
+    } else {
+      // 不透明のまま（元の色を保持）
+      targetCanvas.pixels[i + 3] = 255; // アルファチャンネルを255に
+    }
+  }
+  
+  targetCanvas.updatePixels();
 }
 
 function windowResized() {
