@@ -70,11 +70,7 @@ function drawShape() {
   let centerX = width / 2 + params.xPosition;
   let centerY = height / 2 + params.yPosition;
   
-  // グラデーション作成
-  let gradient = createGradient(centerX, centerY, params.shapeSize);
-  
   // 図形描画
-  fill(gradient);
   noStroke();
   
   switch(params.shape) {
@@ -100,11 +96,21 @@ function drawGradientCircle(x, y, size) {
     let progress = i / (steps - 1);
     
     // グラデーション範囲の調整
-    let gradProgress = map(progress, params.gradientStart, params.gradientEnd, 0, 1);
-    if (params.gradientLoop && gradProgress > 1) {
-      gradProgress = gradProgress % 1;
+    let gradProgress;
+    if (progress < params.gradientStart || progress > params.gradientEnd) {
+      if (params.gradientLoop) {
+        // ループモード：範囲外でも継続的にループ
+        let range = params.gradientEnd - params.gradientStart;
+        let normalizedProgress = (progress - params.gradientStart) / range;
+        gradProgress = normalizedProgress - Math.floor(normalizedProgress);
+      } else {
+        // 非ループモード：範囲外は端の色を使用
+        gradProgress = progress < params.gradientStart ? 0 : 1;
+      }
+    } else {
+      // 範囲内：線形マッピング
+      gradProgress = (progress - params.gradientStart) / (params.gradientEnd - params.gradientStart);
     }
-    gradProgress = constrain(gradProgress, 0, 1);
     
     // 色の補間
     let r = lerp(currentPalette.start[0], currentPalette.end[0], gradProgress);
@@ -136,11 +142,21 @@ function drawGradientTriangle(x, y, size) {
     let progress = i / (steps - 1);
     
     // グラデーション範囲の調整
-    let gradProgress = map(progress, params.gradientStart, params.gradientEnd, 0, 1);
-    if (params.gradientLoop && gradProgress > 1) {
-      gradProgress = gradProgress % 1;
+    let gradProgress;
+    if (progress < params.gradientStart || progress > params.gradientEnd) {
+      if (params.gradientLoop) {
+        // ループモード：範囲外でも継続的にループ
+        let range = params.gradientEnd - params.gradientStart;
+        let normalizedProgress = (progress - params.gradientStart) / range;
+        gradProgress = normalizedProgress - Math.floor(normalizedProgress);
+      } else {
+        // 非ループモード：範囲外は端の色を使用
+        gradProgress = progress < params.gradientStart ? 0 : 1;
+      }
+    } else {
+      // 範囲内：線形マッピング
+      gradProgress = (progress - params.gradientStart) / (params.gradientEnd - params.gradientStart);
     }
-    gradProgress = constrain(gradProgress, 0, 1);
     
     // 色の補間
     let r = lerp(currentPalette.start[0], currentPalette.end[0], gradProgress);
@@ -167,11 +183,21 @@ function drawGradientRectangle(x, y, size) {
     let progress = i / (steps - 1);
     
     // グラデーション範囲の調整
-    let gradProgress = map(progress, params.gradientStart, params.gradientEnd, 0, 1);
-    if (params.gradientLoop && gradProgress > 1) {
-      gradProgress = gradProgress % 1;
+    let gradProgress;
+    if (progress < params.gradientStart || progress > params.gradientEnd) {
+      if (params.gradientLoop) {
+        // ループモード：範囲外でも継続的にループ
+        let range = params.gradientEnd - params.gradientStart;
+        let normalizedProgress = (progress - params.gradientStart) / range;
+        gradProgress = normalizedProgress - Math.floor(normalizedProgress);
+      } else {
+        // 非ループモード：範囲外は端の色を使用
+        gradProgress = progress < params.gradientStart ? 0 : 1;
+      }
+    } else {
+      // 範囲内：線形マッピング
+      gradProgress = (progress - params.gradientStart) / (params.gradientEnd - params.gradientStart);
     }
-    gradProgress = constrain(gradProgress, 0, 1);
     
     // 色の補間
     let r = lerp(currentPalette.start[0], currentPalette.end[0], gradProgress);
@@ -295,11 +321,21 @@ function drawHighResShape(graphics, x, y, size) {
     let progress = i / (steps - 1);
     
     // グラデーション範囲の調整
-    let gradProgress = map(progress, params.gradientStart, params.gradientEnd, 0, 1);
-    if (params.gradientLoop && gradProgress > 1) {
-      gradProgress = gradProgress % 1;
+    let gradProgress;
+    if (progress < params.gradientStart || progress > params.gradientEnd) {
+      if (params.gradientLoop) {
+        // ループモード：範囲外でも継続的にループ
+        let range = params.gradientEnd - params.gradientStart;
+        let normalizedProgress = (progress - params.gradientStart) / range;
+        gradProgress = normalizedProgress - Math.floor(normalizedProgress);
+      } else {
+        // 非ループモード：範囲外は端の色を使用
+        gradProgress = progress < params.gradientStart ? 0 : 1;
+      }
+    } else {
+      // 範囲内：線形マッピング
+      gradProgress = (progress - params.gradientStart) / (params.gradientEnd - params.gradientStart);
     }
-    gradProgress = constrain(gradProgress, 0, 1);
     
     // 色の補間
     let r = lerp(currentPalette.start[0], currentPalette.end[0], gradProgress);
