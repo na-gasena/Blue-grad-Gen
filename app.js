@@ -82,7 +82,7 @@ class GradientArtApp {
     const size = this.config.getParam('shapeSize');
     
     // 図形描画
-    this.shapeRenderer.drawShape(getMainCanvas(), centerX, centerY, size, false);
+    this.shapeRenderer.drawShape(getGlobalDrawingContext(), centerX, centerY, size, false);
   }
   
   // 画像保存
@@ -100,9 +100,23 @@ class GradientArtApp {
   }
 }
 
-// p5.jsのグローバル関数から現在のキャンバスを取得するヘルパー関数
-function getMainCanvas() {
-  // p5.jsの現在の描画コンテキストを返す
-  // この場合は直接window（グローバルスコープ）を使用
-  return window;
+// p5.jsのグローバル描画コンテキストを取得するヘルパー関数
+function getGlobalDrawingContext() {
+  // p5.jsのグローバルモードでは、描画関数がグローバルスコープに存在する
+  // このオブジェクトは描画メソッドを持つコンテキストとして機能する
+  return {
+    push: () => push(),
+    pop: () => pop(),
+    fill: (r, g, b) => fill(r, g, b),
+    noStroke: () => noStroke(),
+    stroke: (r, g, b) => stroke(r, g, b),
+    rect: (x, y, w, h) => rect(x, y, w, h),
+    circle: (x, y, d) => circle(x, y, d),
+    triangle: (x1, y1, x2, y2, x3, y3) => triangle(x1, y1, x2, y2, x3, y3),
+    blendMode: (mode) => blendMode(mode),
+    background: (color) => background(color),
+    clear: () => clear(),
+    width: width,
+    height: height
+  };
 } 
